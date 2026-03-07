@@ -1,0 +1,7 @@
+﻿services:
+  happyheadlines:
+    image: happyheadlines
+    build:
+      context: .
+      dockerfile: Dockerfile
+
