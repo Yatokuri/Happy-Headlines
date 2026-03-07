@@ -35,6 +35,18 @@ public class ArticleService(
 
         return Map(entity);
     }
+    
+    public async Task<IReadOnlyCollection<ArticleResponse>> GetRecentAsync(int limit, CancellationToken cancellationToken)
+    {
+        await using var db = dbContextFactory.CreateDbContext(ShardNames.Global);
+
+        var articles = await db.Articles
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+
+        return articles.Select(Map).ToList();
+    }
 
     public async Task<ArticleResponse?> GetByIdAsync(string id, CancellationToken cancellationToken)
     {

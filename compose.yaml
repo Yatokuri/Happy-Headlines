@@ -1,7 +1,294 @@
 ﻿services:
-  happyheadlines:
-    image: happyheadlines
-    build:
-      context: .
-      dockerfile: Dockerfile
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - articleservice1
+      - articleservice2
+      - articleservice3
 
+  articleservice1:
+    build:
+      context: ./src/ArticleService
+    container_name: articleservice1
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+    depends_on:
+      - africa-db
+      - antarctica-db
+      - asia-db
+      - europe-db
+      - northamerica-db
+      - southamerica-db
+      - oceania-db
+      - global-db
+      - otel-collector
+
+  articleservice2:
+    build:
+      context: ./src/ArticleService
+    container_name: articleservice2
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+    depends_on:
+      - africa-db
+      - antarctica-db
+      - asia-db
+      - europe-db
+      - northamerica-db
+      - southamerica-db
+      - oceania-db
+      - global-db
+      - otel-collector
+
+  articleservice3:
+    build:
+      context: ./src/ArticleService
+    container_name: articleservice3
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+    depends_on:
+      - africa-db
+      - antarctica-db
+      - asia-db
+      - europe-db
+      - northamerica-db
+      - southamerica-db
+      - oceania-db
+      - global-db
+      - otel-collector
+
+  profanityservice:
+    build:
+      context: ./src/ProfanityService
+    container_name: profanityservice
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+    ports:
+      - "5002:8080"
+    depends_on:
+      - profanity-db
+      - otel-collector
+
+  commentservice:
+    build:
+      context: ./src/CommentService
+    container_name: commentservice
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+    ports:
+      - "5003:8080"
+    depends_on:
+      - comment-db
+      - profanityservice
+      - otel-collector
+
+  draftservice:
+    build:
+      context: ./src/DraftService
+    container_name: draftservice
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+    ports:
+      - "5004:8080"
+    depends_on:
+      - draft-db
+      - otel-collector
+
+  newsletterservice:
+    build:
+      context: ./src/NewsletterService
+    container_name: newsletterservice
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+    ports:
+      - "5005:8080"
+    depends_on:
+      - articleservice1
+      - otel-collector
+
+  publisherservice:
+    build:
+      context: ./src/PublisherService
+    container_name: publisherservice
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+    ports:
+      - "5006:8080"
+    depends_on:
+      - profanityservice
+      - nginx
+      - otel-collector
+
+  africa-db:
+    image: postgres:16
+    container_name: africa-db
+    environment:
+      POSTGRES_DB: articles_africa
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "54310:5432"
+
+  antarctica-db:
+    image: postgres:16
+    container_name: antarctica-db
+    environment:
+      POSTGRES_DB: articles_antarctica
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "54311:5432"
+
+  asia-db:
+    image: postgres:16
+    container_name: asia-db
+    environment:
+      POSTGRES_DB: articles_asia
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "54312:5432"
+
+  europe-db:
+    image: postgres:16
+    container_name: europe-db
+    environment:
+      POSTGRES_DB: articles_europe
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "54313:5432"
+
+  northamerica-db:
+    image: postgres:16
+    container_name: northamerica-db
+    environment:
+      POSTGRES_DB: articles_northamerica
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "54314:5432"
+
+  southamerica-db:
+    image: postgres:16
+    container_name: southamerica-db
+    environment:
+      POSTGRES_DB: articles_southamerica
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "54315:5432"
+
+  oceania-db:
+    image: postgres:16
+    container_name: oceania-db
+    environment:
+      POSTGRES_DB: articles_oceania
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "54316:5432"
+
+  global-db:
+    image: postgres:16
+    container_name: global-db
+    environment:
+      POSTGRES_DB: articles_global
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "54317:5432"
+
+  profanity-db:
+    image: postgres:16
+    container_name: profanity-db
+    environment:
+      POSTGRES_DB: profanity_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "54318:5432"
+
+  comment-db:
+    image: postgres:16
+    container_name: comment-db
+    environment:
+      POSTGRES_DB: comment_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "54319:5432"
+
+  draft-db:
+    image: postgres:16
+    container_name: draft-db
+    environment:
+      POSTGRES_DB: draft_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "54320:5432"
+
+  otel-collector:
+    image: otel/opentelemetry-collector:0.104.0
+    container_name: otel-collector
+    command: [ "--config=/etc/otelcol/config.yaml" ]
+    volumes:
+      - ./monitoring/otel-collector/config.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "9464:9464"
+
+  tempo:
+    image: grafana/tempo:2.5.0
+    container_name: tempo
+    command: [ "-config.file=/etc/tempo.yml" ]
+    volumes:
+      - ./monitoring/tempo/tempo.yml:/etc/tempo.yml:ro
+    ports:
+      - "3200:3200"
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: loki
+    command: -config.file=/etc/loki/config.yml
+    volumes:
+      - ./monitoring/loki/config.yml:/etc/loki/config.yml:ro
+    ports:
+      - "3100:3100"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+      - tempo
+      - loki

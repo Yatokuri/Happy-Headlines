@@ -1,6 +1,11 @@
-﻿namespace DefaultNamespace;
+﻿namespace DraftService.Models;
 
 public class Draft
 {
-    
+    public Guid Id { get; set; }
+    public required string PublisherId { get; set; }
+    public required string Title { get; set; }
+    public required string Content { get; set; }
+    public DateTime CreatedAtUtc { get; set; }
+    public DateTime UpdatedAtUtc { get; set; }
 }

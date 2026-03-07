@@ -1,6 +1,10 @@
-﻿namespace DefaultNamespace;
+﻿using NewsletterService.Contracts;
 
-public class IArticleClient
+namespace NewsletterService.Clients;
+
+public interface IArticleClient
 {
-    
+    Task<IReadOnlyCollection<ArticleSummaryResponse>> GetRecentArticlesAsync(
+        int maxArticles,
+        CancellationToken cancellationToken);
 }

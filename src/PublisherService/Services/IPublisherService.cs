@@ -1,6 +1,10 @@
-﻿namespace DefaultNamespace;
+﻿using PublisherService.Contracts;
 
-public class IPublisherService
+namespace PublisherService.Services;
+
+public interface IPublisherService
 {
-    
+    Task<PublishArticleResponse> PublishAsync(
+        PublishArticleRequest request,
+        CancellationToken cancellationToken);
 }

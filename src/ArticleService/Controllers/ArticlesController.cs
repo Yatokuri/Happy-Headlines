@@ -35,4 +35,11 @@ public class ArticlesController(IArticleService articleService) : ControllerBase
         var deleted = await articleService.DeleteAsync(id, cancellationToken);
         return deleted ? NoContent() : NotFound();
     }
+    
+    [HttpGet]
+    public async Task<IActionResult> GetRecent([FromQuery] int limit = 5, CancellationToken cancellationToken = default)
+    {
+        var result = await articleService.GetRecentAsync(limit, cancellationToken);
+        return Ok(result);
+    }
 }
