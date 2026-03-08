@@ -7,67 +7,110 @@
     volumes:
       - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
-      - articleservice1
-      - articleservice2
-      - articleservice3
+      articleservice1:
+        condition: service_started
+      articleservice2:
+        condition: service_started
+      articleservice3:
+        condition: service_started
 
   articleservice1:
     build:
-      context: ./src/ArticleService
+      context: .
+      dockerfile: ./src/ArticleService/Dockerfile
     container_name: articleservice1
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
+      RUN_DB_INIT: "true"
     depends_on:
-      - africa-db
-      - antarctica-db
-      - asia-db
-      - europe-db
-      - northamerica-db
-      - southamerica-db
-      - oceania-db
-      - global-db
-      - otel-collector
+      africa-db:
+        condition: service_healthy
+      antarctica-db:
+        condition: service_healthy
+      asia-db:
+        condition: service_healthy
+      europe-db:
+        condition: service_healthy
+      northamerica-db:
+        condition: service_healthy
+      southamerica-db:
+        condition: service_healthy
+      oceania-db:
+        condition: service_healthy
+      global-db:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+      seq:
+        condition: service_started
 
   articleservice2:
     build:
-      context: ./src/ArticleService
+      context: .
+      dockerfile: ./src/ArticleService/Dockerfile
     container_name: articleservice2
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
+      RUN_DB_INIT: "false"
     depends_on:
-      - africa-db
-      - antarctica-db
-      - asia-db
-      - europe-db
-      - northamerica-db
-      - southamerica-db
-      - oceania-db
-      - global-db
-      - otel-collector
+      africa-db:
+        condition: service_healthy
+      antarctica-db:
+        condition: service_healthy
+      asia-db:
+        condition: service_healthy
+      europe-db:
+        condition: service_healthy
+      northamerica-db:
+        condition: service_healthy
+      southamerica-db:
+        condition: service_healthy
+      oceania-db:
+        condition: service_healthy
+      global-db:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+      seq:
+        condition: service_started
 
   articleservice3:
     build:
-      context: ./src/ArticleService
+      context: .
+      dockerfile: ./src/ArticleService/Dockerfile
     container_name: articleservice3
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
+      RUN_DB_INIT: "false"
     depends_on:
-      - africa-db
-      - antarctica-db
-      - asia-db
-      - europe-db
-      - northamerica-db
-      - southamerica-db
-      - oceania-db
-      - global-db
-      - otel-collector
+      africa-db:
+        condition: service_healthy
+      antarctica-db:
+        condition: service_healthy
+      asia-db:
+        condition: service_healthy
+      europe-db:
+        condition: service_healthy
+      northamerica-db:
+        condition: service_healthy
+      southamerica-db:
+        condition: service_healthy
+      oceania-db:
+        condition: service_healthy
+      global-db:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+      seq:
+        condition: service_started
 
   profanityservice:
     build:
-      context: ./src/ProfanityService
+      context: .
+      dockerfile: ./src/ProfanityService/Dockerfile
     container_name: profanityservice
     environment:
       ASPNETCORE_ENVIRONMENT: Development
@@ -75,12 +118,17 @@
     ports:
       - "5002:8080"
     depends_on:
-      - profanity-db
-      - otel-collector
+      profanity-db:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+      seq:
+        condition: service_started
 
   commentservice:
     build:
-      context: ./src/CommentService
+      context: .
+      dockerfile: ./src/CommentService/Dockerfile
     container_name: commentservice
     environment:
       ASPNETCORE_ENVIRONMENT: Development
@@ -88,13 +136,19 @@
     ports:
       - "5003:8080"
     depends_on:
-      - comment-db
-      - profanityservice
-      - otel-collector
+      comment-db:
+        condition: service_healthy
+      profanityservice:
+        condition: service_started
+      otel-collector:
+        condition: service_started
+      seq:
+        condition: service_started
 
   draftservice:
     build:
-      context: ./src/DraftService
+      context: .
+      dockerfile: ./src/DraftService/Dockerfile
     container_name: draftservice
     environment:
       ASPNETCORE_ENVIRONMENT: Development
@@ -102,12 +156,17 @@
     ports:
       - "5004:8080"
     depends_on:
-      - draft-db
-      - otel-collector
+      draft-db:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+      seq:
+        condition: service_started
 
   newsletterservice:
     build:
-      context: ./src/NewsletterService
+      context: .
+      dockerfile: ./src/NewsletterService/Dockerfile
     container_name: newsletterservice
     environment:
       ASPNETCORE_ENVIRONMENT: Development
@@ -115,12 +174,17 @@
     ports:
       - "5005:8080"
     depends_on:
-      - articleservice1
-      - otel-collector
+      articleservice1:
+        condition: service_started
+      otel-collector:
+        condition: service_started
+      seq:
+        condition: service_started
 
   publisherservice:
     build:
-      context: ./src/PublisherService
+      context: .
+      dockerfile: ./src/PublisherService/Dockerfile
     container_name: publisherservice
     environment:
       ASPNETCORE_ENVIRONMENT: Development
@@ -128,167 +192,121 @@
     ports:
       - "5006:8080"
     depends_on:
-      - profanityservice
-      - nginx
-      - otel-collector
+      profanityservice:
+        condition: service_started
+      nginx:
+        condition: service_started
+      otel-collector:
+        condition: service_started
+      seq:
+        condition: service_started
 
-  africa-db:
-    image: postgres:16
-    container_name: africa-db
+  seq:
+    image: datalust/seq:latest
+    container_name: seq
     environment:
-      POSTGRES_DB: articles_africa
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      ACCEPT_EULA: "Y"
     ports:
-      - "54310:5432"
+      - "5341:80"
 
-  antarctica-db:
-    image: postgres:16
-    container_name: antarctica-db
-    environment:
-      POSTGRES_DB: articles_antarctica
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: zipkin
     ports:
-      - "54311:5432"
-
-  asia-db:
-    image: postgres:16
-    container_name: asia-db
-    environment:
-      POSTGRES_DB: articles_asia
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "54312:5432"
-
-  europe-db:
-    image: postgres:16
-    container_name: europe-db
-    environment:
-      POSTGRES_DB: articles_europe
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "54313:5432"
-
-  northamerica-db:
-    image: postgres:16
-    container_name: northamerica-db
-    environment:
-      POSTGRES_DB: articles_northamerica
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "54314:5432"
-
-  southamerica-db:
-    image: postgres:16
-    container_name: southamerica-db
-    environment:
-      POSTGRES_DB: articles_southamerica
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "54315:5432"
-
-  oceania-db:
-    image: postgres:16
-    container_name: oceania-db
-    environment:
-      POSTGRES_DB: articles_oceania
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "54316:5432"
-
-  global-db:
-    image: postgres:16
-    container_name: global-db
-    environment:
-      POSTGRES_DB: articles_global
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "54317:5432"
-
-  profanity-db:
-    image: postgres:16
-    container_name: profanity-db
-    environment:
-      POSTGRES_DB: profanity_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "54318:5432"
-
-  comment-db:
-    image: postgres:16
-    container_name: comment-db
-    environment:
-      POSTGRES_DB: comment_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "54319:5432"
-
-  draft-db:
-    image: postgres:16
-    container_name: draft-db
-    environment:
-      POSTGRES_DB: draft_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "54320:5432"
+      - "9411:9411"
 
   otel-collector:
-    image: otel/opentelemetry-collector:0.104.0
+    image: otel/opentelemetry-collector:0.147.0
     container_name: otel-collector
-    command: [ "--config=/etc/otelcol/config.yaml" ]
+    command: ["--config=/etc/otelcol/config.yaml"]
     volumes:
       - ./monitoring/otel-collector/config.yaml:/etc/otelcol/config.yaml:ro
     ports:
       - "4317:4317"
       - "4318:4318"
-      - "9464:9464"
-
-  tempo:
-    image: grafana/tempo:2.5.0
-    container_name: tempo
-    command: [ "-config.file=/etc/tempo.yml" ]
-    volumes:
-      - ./monitoring/tempo/tempo.yml:/etc/tempo.yml:ro
-    ports:
-      - "3200:3200"
-
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: prometheus
-    command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
-    volumes:
-      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    ports:
-      - "9090:9090"
-
-  loki:
-    image: grafana/loki:3.0.0
-    container_name: loki
-    command: -config.file=/etc/loki/config.yml
-    volumes:
-      - ./monitoring/loki/config.yml:/etc/loki/config.yml:ro
-    ports:
-      - "3100:3100"
-
-  grafana:
-    image: grafana/grafana:latest
-    container_name: grafana
-    volumes:
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
-    ports:
-      - "3000:3000"
     depends_on:
-      - prometheus
-      - tempo
-      - loki
+      zipkin:
+        condition: service_started
+
+  africa-db: &article-db
+    image: postgres:16
+    environment:
+      POSTGRES_DB: articles_africa
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck: &postgres-healthcheck
+      test: ["CMD-SHELL", "pg_isready -U postgres -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  antarctica-db:
+    <<: *article-db
+    environment:
+      POSTGRES_DB: articles_antarctica
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+
+  asia-db:
+    <<: *article-db
+    environment:
+      POSTGRES_DB: articles_asia
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+
+  europe-db:
+    <<: *article-db
+    environment:
+      POSTGRES_DB: articles_europe
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+
+  northamerica-db:
+    <<: *article-db
+    environment:
+      POSTGRES_DB: articles_northamerica
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+
+  southamerica-db:
+    <<: *article-db
+    environment:
+      POSTGRES_DB: articles_southamerica
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+
+  oceania-db:
+    <<: *article-db
+    environment:
+      POSTGRES_DB: articles_oceania
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+
+  global-db:
+    <<: *article-db
+    environment:
+      POSTGRES_DB: articles_global
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+
+  profanity-db:
+    <<: *article-db
+    environment:
+      POSTGRES_DB: profanity_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+
+  comment-db:
+    <<: *article-db
+    environment:
+      POSTGRES_DB: comment_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+
+  draft-db:
+    <<: *article-db
+    environment:
+      POSTGRES_DB: draft_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres

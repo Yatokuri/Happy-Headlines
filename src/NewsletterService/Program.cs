@@ -1,9 +1,18 @@
 using NewsletterService.Clients;
 using NewsletterService.Services;
 using Shared.DependencyInjection;
+using Serilog;
 using Shared.Resilience;
 
+Log.Logger = new LoggerConfiguration()
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .WriteTo.Seq("http://seq")
+    .CreateLogger();
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog();
 
 builder.Services.AddServiceDefaults(
     builder.Configuration,
@@ -13,6 +22,7 @@ builder.Services.AddServiceDefaults(
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddHealthChecks();
 
 builder.Services.AddHttpClient<IArticleClient, ArticleHttpClient>(client =>
     {
@@ -26,9 +36,12 @@ builder.Services.AddScoped<INewsletterService, NewsletterService.Services.Newsle
 
 var app = builder.Build();
 
+app.UseSerilogRequestLogging();
+
 app.UseSwagger();
 app.UseSwaggerUI();
 
 app.MapControllers();
+app.MapHealthChecks("/health");
 
 app.Run();

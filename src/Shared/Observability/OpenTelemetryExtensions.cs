@@ -1,7 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
@@ -15,7 +14,9 @@ public static class OpenTelemetryExtensions
         IHostEnvironment environment,
         string serviceName)
     {
-        var otlpEndpoint = configuration["OpenTelemetry:OtlpEndpoint"];
+        var otlpEndpoint =
+            configuration["OpenTelemetry:OtlpEndpoint"]
+            ?? "http://otel-collector:4317";
 
         var builder = services.AddOpenTelemetry();
 
@@ -49,23 +50,7 @@ public static class OpenTelemetryExtensions
                 });
             }
         });
-
-        builder.WithMetrics(metrics =>
-        {
-            metrics
-                .AddAspNetCoreInstrumentation()
-                .AddHttpClientInstrumentation()
-                .AddRuntimeInstrumentation();
-
-            if (!string.IsNullOrWhiteSpace(otlpEndpoint))
-            {
-                metrics.AddOtlpExporter(options =>
-                {
-                    options.Endpoint = new Uri(otlpEndpoint);
-                });
-            }
-        });
-
+        
         return services;
     }
 }

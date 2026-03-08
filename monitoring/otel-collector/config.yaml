@@ -5,23 +5,11 @@
       http:
 
 exporters:
-  otlp/tempo:
-    endpoint: tempo:4317
-    tls:
-      insecure: true
-
-  prometheus:
-    endpoint: "0.0.0.0:9464"
-
-  debug:
-    verbosity: basic
+  zipkin:
+    endpoint: "http://zipkin:9411/api/v2/spans"
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
-      exporters: [otlp/tempo, debug]
-
-    metrics:
-      receivers: [otlp]
-      exporters: [prometheus, debug]
+      exporters: [zipkin]

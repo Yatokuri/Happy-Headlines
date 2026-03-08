@@ -13,8 +13,8 @@ public class ShardResolver : IShardResolver
             "Antarctica" => ShardNames.Antarctica,
             "Asia" => ShardNames.Asia,
             "Europe" => ShardNames.Europe,
-            "North America" => ShardNames.NorthAmerica,
-            "South America" => ShardNames.SouthAmerica,
+            "NorthAmerica" or "North America" => ShardNames.NorthAmerica,
+            "SouthAmerica" or "South America" => ShardNames.SouthAmerica,
             "Oceania" => ShardNames.Oceania,
             _ => throw new ArgumentException($"Unknown scopeValue '{scopeValue}'")
         };
