@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using OpenTelemetry.Exporter;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
@@ -47,6 +48,7 @@ public static class OpenTelemetryExtensions
                 tracing.AddOtlpExporter(options =>
                 {
                     options.Endpoint = new Uri(otlpEndpoint);
+                    options.Protocol = OtlpExportProtocol.Grpc;
                 });
             }
         });

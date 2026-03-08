@@ -216,7 +216,7 @@
       - "9411:9411"
 
   otel-collector:
-    image: otel/opentelemetry-collector:0.147.0
+    image: otel/opentelemetry-collector-contrib:0.147.0
     container_name: otel-collector
     command: ["--config=/etc/otelcol/config.yaml"]
     volumes:
