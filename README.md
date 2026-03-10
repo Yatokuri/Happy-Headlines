@@ -10,20 +10,20 @@ Compulsory Assignment #1 - Happy Headlines - Development of Large Systems
 ## Swagger endpoint ports
 
 ### Articleservice
-https://localhost:8080/swagger
+http://localhost:8080/swagger
 ### ProfanityService
-https://localhost:5002/swagger
+http://localhost:5002/swagger
 ### CommentService
-https://localhost:5003/swagger
+http://localhost:5003/swagger
 ### DraftService
-https://localhost:5004/swagger
+http://localhost:5004/swagger
 ### NewsletterService
-https://localhost:5005/swagger
+http://localhost:5005/swagger
 ### PublisherService
-https://localhost:5006/swagger
+http://localhost:5006/swagger
 
 ## Seq & Zipkin
 ### Seq
-https://localhost:5341
+http://localhost:5341
 ### Zipkin
-https://localhost:9411
+http://localhost:9411
