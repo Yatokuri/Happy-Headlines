@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using System.Diagnostics;
+using System.Text.Json;
 using ArticleService.Contracts;
 using ArticleService.Models;
 using ArticleService.Sharding;
@@ -14,6 +15,8 @@ public class ArticleService(
     IConnectionMultiplexer redis)
     : IArticleService
 {
+    private static readonly ActivitySource ActivitySource = new("ArticleService");
+    
     private readonly IDatabase _cache = redis.GetDatabase();
 
     private static readonly TimeSpan CacheWindow = TimeSpan.FromDays(14);
@@ -22,7 +25,18 @@ public class ArticleService(
 
     public async Task<ArticleResponse> CreateAsync(CreateArticleRequest request, CancellationToken cancellationToken)
     {
-        var shard = shardResolver.ResolveForCreate(request.ScopeType, request.ScopeValue);
+        using var activity = ActivitySource.StartActivity("Create article");
+        activity?.SetTag("article.scope_type", request.ScopeType);
+        activity?.SetTag("article.scope_value", request.ScopeValue);
+
+        string shard;
+        
+        using (var shardActivity = ActivitySource.StartActivity("Resolve article shard"))
+        {
+            shard = shardResolver.ResolveForCreate(request.ScopeType, request.ScopeValue);
+            shardActivity?.SetTag("article.shard", shard);
+        }
+        
         var articleId = idGenerator.Generate(shard);
 
         await using var db = dbContextFactory.CreateDbContext(shard);
@@ -43,6 +57,8 @@ public class ArticleService(
 
         db.Articles.Add(entity);
         await db.SaveChangesAsync(cancellationToken);
+        
+        activity?.SetTag("article.id", entity.Id);
 
         var result = Map(entity);
 
@@ -53,6 +69,9 @@ public class ArticleService(
 
     public async Task<IReadOnlyCollection<ArticleResponse>> GetRecentAsync(int limit, CancellationToken cancellationToken)
     {
+        using var activity = ActivitySource.StartActivity("Get recent articles");
+        activity?.SetTag("articles.limit", limit);
+        
         limit = Math.Clamp(limit, 1, 100);
 
         await using var db = dbContextFactory.CreateDbContext(ShardNames.Global);
@@ -61,12 +80,17 @@ public class ArticleService(
             .OrderByDescending(x => x.CreatedAtUtc)
             .Take(limit)
             .ToListAsync(cancellationToken);
+        
+        activity?.SetTag("articles.count", articles.Count);
 
         return articles.Select(Map).ToList();
     }
 
     public async Task<ArticleResponse?> GetByIdAsync(string id, CancellationToken cancellationToken)
     {
+        using var activity = ActivitySource.StartActivity("Get article by id");
+        activity?.SetTag("article.id", id);
+        
         var cacheKey = GetArticleCacheKey(id);
 
         var cached = await _cache.StringGetAsync(cacheKey);
@@ -80,6 +104,7 @@ public class ArticleService(
         }
 
         var shard = shardResolver.ResolveFromArticleId(id);
+        activity?.SetTag("article.shard", shard);
 
         await using var db = dbContextFactory.CreateDbContext(shard);
 
@@ -97,7 +122,11 @@ public class ArticleService(
 
     public async Task<ArticleResponse?> UpdateAsync(string id, UpdateArticleRequest request, CancellationToken cancellationToken)
     {
+        using var activity = ActivitySource.StartActivity("Update article");
+        activity?.SetTag("article.id", id);
+        
         var shard = shardResolver.ResolveFromArticleId(id);
+        activity?.SetTag("article.shard", shard);
 
         await using var db = dbContextFactory.CreateDbContext(shard);
 
@@ -121,7 +150,11 @@ public class ArticleService(
 
     public async Task<bool> DeleteAsync(string id, CancellationToken cancellationToken)
     {
+        using var activity = ActivitySource.StartActivity("Delete article");
+        activity?.SetTag("article.id", id);
+        
         var shard = shardResolver.ResolveFromArticleId(id);
+        activity?.SetTag("article.shard", shard);
 
         await using var db = dbContextFactory.CreateDbContext(shard);
 

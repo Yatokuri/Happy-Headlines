@@ -1,4 +1,5 @@
-﻿using CommentService.Clients;
+﻿using System.Diagnostics;
+using CommentService.Clients;
 using CommentService.Contracts;
 using CommentService.Data;
 using CommentService.Models;
@@ -12,13 +13,21 @@ public class CommentService(
     ILogger<CommentService> logger)
     : ICommentService
 {
+    private static readonly ActivitySource ActivitySource = new("CommentService");
+    
     public async Task<CommentResponse> CreateCommentAsync(CreateCommentRequest request, CancellationToken cancellationToken)
     {
+        using var activity = ActivitySource.StartActivity("Create comment");
+        activity?.SetTag("article.id", request.ArticleId);
+        activity?.SetTag("author.name", request.AuthorName);
+        
         ProfanityCheckResponse profanityResult;
-
+        
         try
         {
+            using var validateActivity = ActivitySource.StartActivity("Validate comment content");
             profanityResult = await profanityClient.CheckTextAsync(request.Content, cancellationToken);
+            validateActivity?.SetTag("profanity.contains", profanityResult.ContainsProfanity);
         }
         catch (Exception ex)
         {
@@ -30,10 +39,13 @@ public class CommentService(
 
         if (profanityResult.ContainsProfanity)
         {
+            activity?.SetTag("comment.rejected", true);
             throw new ArgumentException(
                 $"Comment contains profanity: {string.Join(", ", profanityResult.MatchedWords)}");
         }
 
+        using var storeActivity = ActivitySource.StartActivity("Store comment");
+        
         var entity = new Comment
         {
             Id = Guid.NewGuid(),
@@ -45,6 +57,8 @@ public class CommentService(
 
         dbContext.Comments.Add(entity);
         await dbContext.SaveChangesAsync(cancellationToken);
+        
+        storeActivity?.SetTag("comment.id", entity.Id);
 
         return new CommentResponse
         {
@@ -58,6 +72,9 @@ public class CommentService(
 
     public async Task<IReadOnlyCollection<CommentResponse>> GetCommentByArticleIdAsync(string articleId, CancellationToken cancellationToken)
     {
+        using var activity = ActivitySource.StartActivity("Get comments for article");
+        activity?.SetTag("article.id", articleId);
+        
         return await dbContext.Comments
             .Where(x => x.ArticleId == articleId)
             .OrderBy(x => x.CreatedAtUtc)

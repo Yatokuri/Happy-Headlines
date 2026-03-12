@@ -1,4 +1,5 @@
-﻿using PublisherService.Clients;
+﻿using System.Diagnostics;
+using PublisherService.Clients;
 using PublisherService.Contracts;
 
 namespace PublisherService.Services;
@@ -9,28 +10,38 @@ public class PublisherService(
     ILogger<PublisherService> logger)
     : IPublisherService
 {
+    private static readonly ActivitySource ActivitySource = new("PublisherService");
+    
     public async Task<PublishArticleResponse> PublishAsync(
         PublishArticleRequest request,
         CancellationToken cancellationToken)
     {
-        logger.LogInformation(
-            "Starting publish workflow. PublisherId: {PublisherId}, ScopeType: {ScopeType}, ScopeValue: {ScopeValue}",
-            request.PublisherId,
-            request.ScopeType,
-            request.ScopeValue);
-
-        var profanityResult = await profanityClient.CheckTextAsync(request.Content, cancellationToken);
-
-        if (profanityResult.ContainsProfanity)
+        using var publishActivity = ActivitySource.StartActivity("Publish article workflow");
+        
+        publishActivity?.SetTag("publisher.id", request.PublisherId);
+        publishActivity?.SetTag("article.scope_type", request.ScopeType);
+        publishActivity?.SetTag("article.scope_value", request.ScopeValue);
+        
+        using (var validateActivity = ActivitySource.StartActivity("Validate article content"))
         {
-            logger.LogWarning(
-                "Article rejected due to profanity. PublisherId: {PublisherId}, MatchedWords: {MatchedWords}",
-                request.PublisherId,
-                string.Join(", ", profanityResult.MatchedWords));
+            var profanityResult = await profanityClient.CheckTextAsync(request.Content, cancellationToken);
+            validateActivity?.SetTag("profanity.contains", profanityResult.ContainsProfanity);
 
-            throw new ArgumentException(
-                $"Article contains profanity: {string.Join(", ", profanityResult.MatchedWords)}");
+            if (profanityResult.ContainsProfanity)
+            {
+                validateActivity?.SetTag("profanity.matched_words", string.Join(", ", profanityResult.MatchedWords));
+
+                logger.LogWarning(
+                    "Article rejected due to profanity. PublisherId: {PublisherId}, MatchedWords: {MatchedWords}",
+                    request.PublisherId,
+                    string.Join(", ", profanityResult.MatchedWords));
+
+                throw new ArgumentException(
+                    $"Article contains profanity: {string.Join(", ", profanityResult.MatchedWords)}");
+            }
         }
+        
+        using var persistActivity = ActivitySource.StartActivity("Add published article to database");
 
         var article = await articleClient.CreateArticleAsync(
             new CreateArticleRequest
@@ -43,6 +54,8 @@ public class PublisherService(
             },
             cancellationToken);
 
+        persistActivity?.SetTag("article.id", article.Id);
+        
         logger.LogInformation(
             "Article published successfully. ArticleId: {ArticleId}, PublisherId: {PublisherId}",
             article.Id,

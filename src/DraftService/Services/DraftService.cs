@@ -1,4 +1,5 @@
-﻿using DraftService.Contracts;
+﻿using System.Diagnostics;
+using DraftService.Contracts;
 using DraftService.Data;
 using DraftService.Models;
 using Microsoft.EntityFrameworkCore;
@@ -7,8 +8,13 @@ namespace DraftService.Services;
 
 public class DraftService(DraftDbContext dbContext, ILogger<DraftService> logger) : IDraftService
 {
+    private static readonly ActivitySource ActivitySource = new("DraftService");
+    
     public async Task<DraftResponse> CreateDraftAsync(CreateDraftRequest request, CancellationToken cancellationToken)
     {
+        using var activity = ActivitySource.StartActivity("Create draft");
+        activity?.SetTag("publisher.id", request.PublisherId);
+        
         var entity = new Draft
         {
             Id = Guid.NewGuid(),
@@ -27,29 +33,27 @@ public class DraftService(DraftDbContext dbContext, ILogger<DraftService> logger
             entity.Id,
             entity.PublisherId);
 
+        activity?.SetTag("draft.id", entity.Id);
+        
         return Map(entity);
     }
 
     public async Task<DraftResponse?> GetDraftByIdAsync(Guid id, CancellationToken cancellationToken)
     {
-        var entity = await dbContext.Drafts
-            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-
-        if (entity is null)
-        {
-            logger.LogWarning("Draft not found. DraftId: {DraftId}", id);
-            return null;
-        }
-
-        logger.LogInformation("Draft retrieved. DraftId: {DraftId}", id);
-
-        return Map(entity);
+        using var activity = ActivitySource.StartActivity("Get draft by id");
+        activity?.SetTag("draft.id", id);
+        
+        var entity = await dbContext.Drafts.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        return entity is null ? null : Map(entity);
     }
 
     public async Task<IReadOnlyCollection<DraftResponse>> GetDraftByPublisherIdAsync(
         string publisherId,
         CancellationToken cancellationToken)
     {
+        using var activity = ActivitySource.StartActivity("Get drafts by publisher");
+        activity?.SetTag("publisher.id", publisherId);
+        
         var drafts = await dbContext.Drafts
             .Where(x => x.PublisherId == publisherId)
             .OrderByDescending(x => x.UpdatedAtUtc)
@@ -74,14 +78,12 @@ public class DraftService(DraftDbContext dbContext, ILogger<DraftService> logger
 
     public async Task<DraftResponse?> UpdateDraftAsync(Guid id, UpdateDraftRequest request, CancellationToken cancellationToken)
     {
-        var entity = await dbContext.Drafts
-            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        using var activity = ActivitySource.StartActivity("Update draft");
+        activity?.SetTag("draft.id", id);
+        
+        var entity = await dbContext.Drafts.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
-        if (entity is null)
-        {
-            logger.LogWarning("Draft update failed. Draft not found. DraftId: {DraftId}", id);
-            return null;
-        }
+        if (entity is null) return null;
 
         entity.Title = request.Title;
         entity.Content = request.Content;
@@ -96,14 +98,13 @@ public class DraftService(DraftDbContext dbContext, ILogger<DraftService> logger
 
     public async Task<bool> DeleteDraftAsync(Guid id, CancellationToken cancellationToken)
     {
+        using var activity = ActivitySource.StartActivity("Delete draft");
+        activity?.SetTag("draft.id", id);
+        
         var entity = await dbContext.Drafts
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
-        if (entity is null)
-        {
-            logger.LogWarning("Draft delete failed. Draft not found. DraftId: {DraftId}", id);
-            return false;
-        }
+        if (entity is null) return false;
 
         dbContext.Drafts.Remove(entity);
         await dbContext.SaveChangesAsync(cancellationToken);

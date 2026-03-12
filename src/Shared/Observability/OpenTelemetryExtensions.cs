@@ -34,6 +34,7 @@ public static class OpenTelemetryExtensions
         builder.WithTracing(tracing =>
         {
             tracing
+                .AddSource(serviceName)
                 .AddAspNetCoreInstrumentation(options =>
                 {
                     options.RecordException = true;
@@ -41,16 +42,12 @@ public static class OpenTelemetryExtensions
                 .AddHttpClientInstrumentation(options =>
                 {
                     options.RecordException = true;
-                });
-
-            if (!string.IsNullOrWhiteSpace(otlpEndpoint))
-            {
-                tracing.AddOtlpExporter(options =>
+                })
+                .AddOtlpExporter(options =>
                 {
                     options.Endpoint = new Uri(otlpEndpoint);
                     options.Protocol = OtlpExportProtocol.Grpc;
                 });
-            }
         });
         
         return services;

@@ -1,4 +1,5 @@
-﻿using NewsletterService.Clients;
+﻿using System.Diagnostics;
+using NewsletterService.Clients;
 using NewsletterService.Contracts;
 
 namespace NewsletterService.Services;
@@ -8,31 +9,30 @@ public class NewsletterService(
     ILogger<NewsletterService> logger)
     : INewsletterService
 {
+    private static readonly ActivitySource ActivitySource = new("NewsletterService");
+    
     public async Task<SendNewsletterResponse> SendAsync(
         SendNewsletterRequest request,
         CancellationToken cancellationToken)
     {
-        logger.LogInformation(
-            "Starting newsletter send. Audience: {Audience}, MaxArticles: {MaxArticles}",
-            request.Audience,
-            request.MaxArticles);
+        using var activity = ActivitySource.StartActivity("Send newsletter workflow");
+        activity?.SetTag("newsletter.audience", request.Audience);
+        activity?.SetTag("newsletter.max_articles", request.MaxArticles);
 
-        var articles = await articleClient.GetRecentArticlesAsync(
-            request.MaxArticles,
-            cancellationToken);
+        IReadOnlyCollection<ArticleSummaryResponse> articles;
+        
+        using (var fetchActivity = ActivitySource.StartActivity("Fetch recent articles"))
+        {
+            articles = await articleClient.GetRecentArticlesAsync(request.MaxArticles, cancellationToken);
+            fetchActivity?.SetTag("articles.count", articles.Count);
+        }
+        
+        using var buildActivity = ActivitySource.StartActivity("Build newsletter payload");
 
         var articleIds = articles.Select(x => x.Id).ToList();
-
-        logger.LogInformation(
-            "Newsletter content collected. Audience: {Audience}, ArticlesIncluded: {Count}",
-            request.Audience,
-            articleIds.Count);
-
-        // Simulated send
-        logger.LogInformation(
-            "Newsletter sent. Audience: {Audience}, SentAtUtc: {SentAtUtc}",
-            request.Audience,
-            DateTime.UtcNow);
+        
+        // Does not actually send a newsletter - No email service has been connected
+        buildActivity?.SetTag("articles.included", articleIds.Count);
 
         return new SendNewsletterResponse
         {
