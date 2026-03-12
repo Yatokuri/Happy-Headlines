@@ -1,22 +1,33 @@
-﻿using ArticleService.Contracts;
+﻿using System.Text.Json;
+using ArticleService.Contracts;
 using ArticleService.Models;
 using ArticleService.Sharding;
 using Microsoft.EntityFrameworkCore;
+using StackExchange.Redis;
 
 namespace ArticleService.Services;
 
 public class ArticleService(
     IShardResolver shardResolver,
     IArticleDbContextFactory dbContextFactory,
-    IArticleIdGenerator idGenerator)
+    IArticleIdGenerator idGenerator,
+    IConnectionMultiplexer redis)
     : IArticleService
 {
+    private readonly IDatabase _cache = redis.GetDatabase();
+
+    private static readonly TimeSpan CacheWindow = TimeSpan.FromDays(14);
+
+    private static string GetArticleCacheKey(string id) => $"article:{id}";
+
     public async Task<ArticleResponse> CreateAsync(CreateArticleRequest request, CancellationToken cancellationToken)
     {
         var shard = shardResolver.ResolveForCreate(request.ScopeType, request.ScopeValue);
         var articleId = idGenerator.Generate(shard);
 
         await using var db = dbContextFactory.CreateDbContext(shard);
+
+        var now = DateTime.UtcNow;
 
         var entity = new Article
         {
@@ -26,18 +37,24 @@ public class ArticleService(
             PublisherId = request.PublisherId,
             ScopeType = request.ScopeType,
             ScopeValue = request.ScopeValue,
-            CreatedAtUtc = DateTime.UtcNow,
-            UpdatedAtUtc = DateTime.UtcNow
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now
         };
 
         db.Articles.Add(entity);
         await db.SaveChangesAsync(cancellationToken);
 
-        return Map(entity);
+        var result = Map(entity);
+
+        await CacheArticleIfEligibleAsync(result);
+
+        return result;
     }
-    
+
     public async Task<IReadOnlyCollection<ArticleResponse>> GetRecentAsync(int limit, CancellationToken cancellationToken)
     {
+        limit = Math.Clamp(limit, 1, 100);
+
         await using var db = dbContextFactory.CreateDbContext(ShardNames.Global);
 
         var articles = await db.Articles
@@ -50,12 +67,32 @@ public class ArticleService(
 
     public async Task<ArticleResponse?> GetByIdAsync(string id, CancellationToken cancellationToken)
     {
+        var cacheKey = GetArticleCacheKey(id);
+
+        var cached = await _cache.StringGetAsync(cacheKey);
+        if (cached.HasValue)
+        {
+            var cachedArticle = JsonSerializer.Deserialize<ArticleResponse>(cached!);
+            if (cachedArticle is not null)
+            {
+                return cachedArticle;
+            }
+        }
+
         var shard = shardResolver.ResolveFromArticleId(id);
 
         await using var db = dbContextFactory.CreateDbContext(shard);
+
         var entity = await db.Articles.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
-        return entity is null ? null : Map(entity);
+        if (entity is null)
+            return null;
+
+        var result = Map(entity);
+
+        await CacheArticleIfEligibleAsync(result);
+
+        return result;
     }
 
     public async Task<ArticleResponse?> UpdateAsync(string id, UpdateArticleRequest request, CancellationToken cancellationToken)
@@ -63,6 +100,7 @@ public class ArticleService(
         var shard = shardResolver.ResolveFromArticleId(id);
 
         await using var db = dbContextFactory.CreateDbContext(shard);
+
         var entity = await db.Articles.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         if (entity is null)
@@ -74,7 +112,11 @@ public class ArticleService(
 
         await db.SaveChangesAsync(cancellationToken);
 
-        return Map(entity);
+        var result = Map(entity);
+
+        await CacheArticleIfEligibleAsync(result);
+
+        return result;
     }
 
     public async Task<bool> DeleteAsync(string id, CancellationToken cancellationToken)
@@ -82,6 +124,7 @@ public class ArticleService(
         var shard = shardResolver.ResolveFromArticleId(id);
 
         await using var db = dbContextFactory.CreateDbContext(shard);
+
         var entity = await db.Articles.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         if (entity is null)
@@ -90,7 +133,34 @@ public class ArticleService(
         db.Articles.Remove(entity);
         await db.SaveChangesAsync(cancellationToken);
 
+        await _cache.KeyDeleteAsync(GetArticleCacheKey(id));
+
         return true;
+    }
+
+    private async Task CacheArticleIfEligibleAsync(ArticleResponse article)
+    {
+        var ttl = CalculateRemainingTtl(article.CreatedAtUtc);
+        var cacheKey = GetArticleCacheKey(article.Id);
+
+        if (ttl is null)
+        {
+            await _cache.KeyDeleteAsync(cacheKey);
+            return;
+        }
+
+        var json = JsonSerializer.Serialize(article);
+
+        await _cache.StringSetAsync(cacheKey, json);
+        await _cache.KeyExpireAsync(cacheKey, ttl.Value);
+    }
+
+    private static TimeSpan? CalculateRemainingTtl(DateTime createdAtUtc)
+    {
+        var expiresAtUtc = createdAtUtc.Add(CacheWindow);
+        var remaining = expiresAtUtc - DateTime.UtcNow;
+
+        return remaining > TimeSpan.Zero ? remaining : null;
     }
 
     private static ArticleResponse Map(Article entity)

@@ -23,6 +23,7 @@
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       RUN_DB_INIT: "true"
+      ConnectionStrings__Redis: redis:6379,abortConnect=false
     depends_on:
       africa-db:
         condition: service_healthy
@@ -43,6 +44,8 @@
       otel-collector:
         condition: service_started
       seq:
+        condition: service_started
+      redis:
         condition: service_started
 
   articleservice2:
@@ -54,6 +57,7 @@
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       RUN_DB_INIT: "false"
+      ConnectionStrings__Redis: redis:6379,abortConnect=false
     depends_on:
       africa-db:
         condition: service_healthy
@@ -74,6 +78,8 @@
       otel-collector:
         condition: service_started
       seq:
+        condition: service_started
+      redis:
         condition: service_started
 
   articleservice3:
@@ -85,6 +91,7 @@
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       RUN_DB_INIT: "false"
+      ConnectionStrings__Redis: redis:6379,abortConnect=false
     depends_on:
       africa-db:
         condition: service_healthy
@@ -105,6 +112,8 @@
       otel-collector:
         condition: service_started
       seq:
+        condition: service_started
+      redis:
         condition: service_started
 
   profanityservice:
@@ -209,6 +218,12 @@
       SEQ_FIRSTRUN_NOAUTHENTICATION: "true"
     ports:
       - "5341:80"
+  
+  redis:
+    image: redis:8.6
+    container_name: redis
+    ports:
+      - "6379:6379"
 
   zipkin:
     image: openzipkin/zipkin:latest
