@@ -74,6 +74,9 @@ public class CommentService(
 
         if (cached.HasValue)
         {
+            CommentCacheMetrics.CacheRequests.Add(1);
+            CommentCacheMetrics.CacheHits.Add(1);
+            
             var comments = JsonSerializer.Deserialize<List<CommentResponse>>(cached!, JsonOptions);
             if (comments is not null)
             {
@@ -85,6 +88,8 @@ public class CommentService(
                 return comments;
             }
         }
+        CommentCacheMetrics.CacheRequests.Add(1);
+        CommentCacheMetrics.CacheMisses.Add(1);
 
         var dbComments = await LoadCommentsFromDatabaseAsync(articleId, cancellationToken);
 
@@ -110,6 +115,9 @@ public class CommentService(
 
         if (cached.HasValue)
         {
+            CommentCacheMetrics.CacheRequests.Add(1);
+            CommentCacheMetrics.CacheHits.Add(1);
+            
             var comments = JsonSerializer.Deserialize<List<CommentResponse>>(cached!, JsonOptions);
 
             if (comments is not null)
@@ -132,6 +140,8 @@ public class CommentService(
                     .ToList();
             }
         }
+        CommentCacheMetrics.CacheRequests.Add(1);
+        CommentCacheMetrics.CacheMisses.Add(1);
 
         var dbComments = await LoadCommentsFromDatabaseAsync(articleId, cancellationToken);
 

@@ -10,8 +10,15 @@ exporters:
   zipkin:
     endpoint: "http://zipkin:9411/api/v2/spans"
 
+  prometheus:
+    endpoint: "0.0.0.0:9464"
+
 service:
   pipelines:
     traces:
       receivers: [otlp]
       exporters: [zipkin]
+
+    metrics:
+      receivers: [otlp]
+      exporters: [prometheus]

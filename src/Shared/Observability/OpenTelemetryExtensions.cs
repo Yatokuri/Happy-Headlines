@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using OpenTelemetry.Exporter;
+using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
@@ -43,6 +44,26 @@ public static class OpenTelemetryExtensions
                 {
                     options.RecordException = true;
                 })
+                .AddOtlpExporter(options =>
+                {
+                    options.Endpoint = new Uri(otlpEndpoint);
+                    options.Protocol = OtlpExportProtocol.Grpc;
+                });
+        });
+        
+        builder.WithMetrics(metrics =>
+        {
+            metrics
+                .AddAspNetCoreInstrumentation()
+                .AddHttpClientInstrumentation()
+                
+                .AddMeter("Microsoft.AspNetCore.Hosting")
+                .AddMeter("Microsoft.AspNetCore.Server.Kestrel")
+                .AddMeter("System.Net.Http")
+                
+                .AddMeter("HappyHeadlines.ArticleService.Cache")
+                .AddMeter("HappyHeadlines.CommentService.Cache")
+
                 .AddOtlpExporter(options =>
                 {
                     options.Endpoint = new Uri(otlpEndpoint);

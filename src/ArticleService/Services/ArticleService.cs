@@ -101,10 +101,15 @@ public class ArticleService(
         var cached = await _cache.StringGetAsync(cacheKey);
         if (cached.HasValue)
         {
+            ArticleCacheMetrics.CacheRequests.Add(1);
+            ArticleCacheMetrics.CacheHits.Add(1);
+            
             var cachedArticle = JsonSerializer.Deserialize<ArticleResponse>(cached!);
             if (cachedArticle is not null)
                 return cachedArticle;
         }
+        ArticleCacheMetrics.CacheRequests.Add(1);
+        ArticleCacheMetrics.CacheMisses.Add(1);
 
         await using var db = dbContextFactory.CreateDbContext(shard);
 
