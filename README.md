@@ -27,3 +27,5 @@ http://localhost:5006/swagger
 http://localhost:5341
 ### Zipkin
 http://localhost:9411
+### Grafana
+http://localhost:3000
