@@ -142,6 +142,7 @@
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Redis: redis:6379,abortConnect=false
     ports:
       - "5003:8080"
     depends_on:
@@ -152,6 +153,8 @@
       otel-collector:
         condition: service_started
       seq:
+        condition: service_started
+      redis:
         condition: service_started
 
   draftservice:
@@ -305,7 +308,9 @@
       POSTGRES_DB: articles_global
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-
+    ports:
+      - "5432:5432"
+  
   profanity-db:
     <<: *article-db
     environment:

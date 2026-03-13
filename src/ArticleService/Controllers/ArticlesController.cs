@@ -21,11 +21,18 @@ public class ArticlesController(IArticleService articleService) : ControllerBase
         var result = await articleService.GetByIdAsync(id, cancellationToken);
         return result is null ? NotFound() : Ok(result);
     }
-    
-    [HttpGet]
+
+    [HttpGet("recent")]
     public async Task<IActionResult> GetRecent([FromQuery] int limit = 5, CancellationToken cancellationToken = default)
     {
         var result = await articleService.GetRecentAsync(limit, cancellationToken);
+        return Ok(result);
+    }
+    
+    [HttpGet("latest-14-days")]
+    public async Task<IActionResult> GetLatest14Days(CancellationToken cancellationToken)
+    {
+        var result = await articleService.GetLatestCachedWindowAsync(cancellationToken);
         return Ok(result);
     }
 

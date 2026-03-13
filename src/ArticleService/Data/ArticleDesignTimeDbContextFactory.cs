@@ -9,9 +9,8 @@ public class ArticleDesignTimeDbContextFactory : IDesignTimeDbContextFactory<Art
     {
         var optionsBuilder = new DbContextOptionsBuilder<ArticleDbContext>();
 
-        // Only used for generating migrations locally
         var connectionString =
-            "Host=localhost;Port=5432;Database=articles_design;Username=postgres;Password=postgres";
+            "Host=localhost;Port=5432;Database=articles_global;Username=postgres;Password=postgres";
 
         optionsBuilder.UseNpgsql(connectionString);
 

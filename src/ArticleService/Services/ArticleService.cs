@@ -16,12 +16,14 @@ public class ArticleService(
     : IArticleService
 {
     private static readonly ActivitySource ActivitySource = new("ArticleService");
-    
+
     private readonly IDatabase _cache = redis.GetDatabase();
 
     private static readonly TimeSpan CacheWindow = TimeSpan.FromDays(14);
 
     private static string GetArticleCacheKey(string id) => $"article:{id}";
+
+    private const string CachedArticlesByCreatedKey = "articles:cached:by-created";
 
     public async Task<ArticleResponse> CreateAsync(CreateArticleRequest request, CancellationToken cancellationToken)
     {
@@ -30,13 +32,13 @@ public class ArticleService(
         activity?.SetTag("article.scope_value", request.ScopeValue);
 
         string shard;
-        
+
         using (var shardActivity = ActivitySource.StartActivity("Resolve article shard"))
         {
             shard = shardResolver.ResolveForCreate(request.ScopeType, request.ScopeValue);
             shardActivity?.SetTag("article.shard", shard);
         }
-        
+
         var articleId = idGenerator.Generate(shard);
 
         await using var db = dbContextFactory.CreateDbContext(shard);
@@ -57,7 +59,7 @@ public class ArticleService(
 
         db.Articles.Add(entity);
         await db.SaveChangesAsync(cancellationToken);
-        
+
         activity?.SetTag("article.id", entity.Id);
 
         var result = Map(entity);
@@ -71,7 +73,7 @@ public class ArticleService(
     {
         using var activity = ActivitySource.StartActivity("Get recent articles");
         activity?.SetTag("articles.limit", limit);
-        
+
         limit = Math.Clamp(limit, 1, 100);
 
         await using var db = dbContextFactory.CreateDbContext(ShardNames.Global);
@@ -80,7 +82,7 @@ public class ArticleService(
             .OrderByDescending(x => x.CreatedAtUtc)
             .Take(limit)
             .ToListAsync(cancellationToken);
-        
+
         activity?.SetTag("articles.count", articles.Count);
 
         return articles.Select(Map).ToList();
@@ -90,7 +92,10 @@ public class ArticleService(
     {
         using var activity = ActivitySource.StartActivity("Get article by id");
         activity?.SetTag("article.id", id);
-        
+
+        var shard = shardResolver.ResolveFromArticleId(id);
+        activity?.SetTag("article.shard", shard);
+
         var cacheKey = GetArticleCacheKey(id);
 
         var cached = await _cache.StringGetAsync(cacheKey);
@@ -98,13 +103,8 @@ public class ArticleService(
         {
             var cachedArticle = JsonSerializer.Deserialize<ArticleResponse>(cached!);
             if (cachedArticle is not null)
-            {
                 return cachedArticle;
-            }
         }
-
-        var shard = shardResolver.ResolveFromArticleId(id);
-        activity?.SetTag("article.shard", shard);
 
         await using var db = dbContextFactory.CreateDbContext(shard);
 
@@ -120,11 +120,50 @@ public class ArticleService(
         return result;
     }
 
+    public async Task<IReadOnlyCollection<ArticleResponse>> GetLatestCachedWindowAsync(CancellationToken cancellationToken)
+    {
+        using var activity = ActivitySource.StartActivity("Get articles from latest cache window");
+
+        var now = DateTime.UtcNow;
+        var fromUtc = now.AddDays(-14);
+
+        var fromScore = new DateTimeOffset(fromUtc).ToUnixTimeSeconds();
+        var toScore = new DateTimeOffset(now).ToUnixTimeSeconds();
+
+        var cachedIds = await _cache.SortedSetRangeByScoreAsync(
+            CachedArticlesByCreatedKey,
+            fromScore,
+            toScore,
+            Exclude.None,
+            Order.Descending);
+
+        var results = new List<ArticleResponse>();
+
+        foreach (var redisValue in cachedIds)
+        {
+            var id = redisValue.ToString();
+            if (string.IsNullOrWhiteSpace(id))
+                continue;
+
+            var cached = await _cache.StringGetAsync(GetArticleCacheKey(id));
+            if (!cached.HasValue)
+                continue;
+
+            var article = JsonSerializer.Deserialize<ArticleResponse>(cached!);
+            if (article is not null)
+                results.Add(article);
+        }
+
+        return results
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .ToList();
+    }
+
     public async Task<ArticleResponse?> UpdateAsync(string id, UpdateArticleRequest request, CancellationToken cancellationToken)
     {
         using var activity = ActivitySource.StartActivity("Update article");
         activity?.SetTag("article.id", id);
-        
+
         var shard = shardResolver.ResolveFromArticleId(id);
         activity?.SetTag("article.shard", shard);
 
@@ -152,7 +191,7 @@ public class ArticleService(
     {
         using var activity = ActivitySource.StartActivity("Delete article");
         activity?.SetTag("article.id", id);
-        
+
         var shard = shardResolver.ResolveFromArticleId(id);
         activity?.SetTag("article.shard", shard);
 
@@ -167,6 +206,7 @@ public class ArticleService(
         await db.SaveChangesAsync(cancellationToken);
 
         await _cache.KeyDeleteAsync(GetArticleCacheKey(id));
+        await _cache.SortedSetRemoveAsync(CachedArticlesByCreatedKey, id);
 
         return true;
     }
@@ -179,13 +219,15 @@ public class ArticleService(
         if (ttl is null)
         {
             await _cache.KeyDeleteAsync(cacheKey);
+            await _cache.SortedSetRemoveAsync(CachedArticlesByCreatedKey, article.Id);
             return;
         }
 
         var json = JsonSerializer.Serialize(article);
+        var createdScore = new DateTimeOffset(article.CreatedAtUtc).ToUnixTimeSeconds();
 
-        await _cache.StringSetAsync(cacheKey, json);
-        await _cache.KeyExpireAsync(cacheKey, ttl.Value);
+        await _cache.StringSetAsync(cacheKey, json, ttl, When.Always);
+        await _cache.SortedSetAddAsync(CachedArticlesByCreatedKey, article.Id, createdScore);
     }
 
     private static TimeSpan? CalculateRemainingTtl(DateTime createdAtUtc)
