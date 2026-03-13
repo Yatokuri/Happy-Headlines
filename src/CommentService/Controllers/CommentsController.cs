@@ -32,4 +32,11 @@ public class CommentsController(ICommentService commentService) : ControllerBase
         var result = await commentService.GetCommentByArticleIdAsync(articleId, cancellationToken);
         return Ok(result);
     }
+    
+    [HttpGet("article/{articleId}/with-source")]
+    public async Task<IActionResult> GetCommentWithSourceByArticleId(string articleId, CancellationToken cancellationToken)
+    {
+        var result = await commentService.GetCommentWithSourceByArticleIdAsync(articleId, cancellationToken);
+        return Ok(result);
+    }
 }

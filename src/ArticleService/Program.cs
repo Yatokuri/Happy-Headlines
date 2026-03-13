@@ -20,8 +20,6 @@ builder.Services.AddServiceDefaults(
     builder.Environment,
     "ArticleService");
 
-
-
 var redisConnectionString =
     builder.Configuration.GetConnectionString("Redis")
     ?? "redis:6379,abortConnect=false";

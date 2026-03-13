@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Shared.DependencyInjection;
 using Shared.Resilience;
+using StackExchange.Redis;
 
 Log.Logger = new LoggerConfiguration()
     .Enrich.FromLogContext()
@@ -20,6 +21,15 @@ builder.Services.AddServiceDefaults(
     builder.Configuration,
     builder.Environment,
     "CommentService");
+
+var redisConnectionString =
+    builder.Configuration.GetConnectionString("Redis")
+    ?? "redis:6379,abortConnect=false";
+
+builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
+{
+    return ConnectionMultiplexer.Connect(redisConnectionString);
+});
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
