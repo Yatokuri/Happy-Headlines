@@ -22,7 +22,7 @@ http://localhost:5005/swagger
 ### PublisherService
 http://localhost:5006/swagger
 
-## Seq & Zipkin
+## Seq, Zipkin, Grafana
 ### Seq
 http://localhost:5341
 ### Zipkin
