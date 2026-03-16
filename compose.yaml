@@ -23,6 +23,7 @@
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       RUN_DB_INIT: "true"
+      RUN_CACHE_REFRESH: "true"
       ConnectionStrings__Redis: redis:6379,abortConnect=false
     depends_on:
       africa-db:
@@ -57,6 +58,7 @@
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       RUN_DB_INIT: "false"
+      RUN_CACHE_REFRESH: "false"
       ConnectionStrings__Redis: redis:6379,abortConnect=false
     depends_on:
       africa-db:
@@ -91,6 +93,7 @@
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       RUN_DB_INIT: "false"
+      RUN_CACHE_REFRESH: "false"
       ConnectionStrings__Redis: redis:6379,abortConnect=false
     depends_on:
       africa-db:

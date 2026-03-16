@@ -10,4 +10,16 @@ public static class ShardNames
     public const string SouthAmerica = "SouthAmerica";
     public const string Oceania = "Oceania";
     public const string Global = "Global";
+
+    public static readonly IReadOnlyCollection<string> All = new[]
+    {
+        Africa,
+        Antarctica,
+        Asia,
+        Europe,
+        NorthAmerica,
+        SouthAmerica,
+        Oceania,
+        Global
+    };
 }

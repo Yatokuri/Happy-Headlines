@@ -1,3 +1,4 @@
+using ArticleService.BackgroundServices;
 using ArticleService.Data;
 using ArticleService.Services;
 using ArticleService.Sharding;
@@ -39,6 +40,15 @@ builder.Services.AddSingleton<IArticleIdGenerator, ArticleIdGenerator>();
 builder.Services.AddSingleton<IArticleDbContextFactory, ArticleDbContextFactory>();
 
 builder.Services.AddScoped<IArticleService, ArticleService.Services.ArticleService>();
+builder.Services.AddScoped<IArticleCacheRefresher, ArticleCacheRefresher>();
+
+var runCacheRefresh = builder.Configuration["RUN_CACHE_REFRESH"];
+
+if (string.Equals(runCacheRefresh, "true", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddHostedService<ArticleCacheRefreshBackgroundService>();
+}
+
 builder.Services.AddSingleton<ArticleDatabaseInitializer>();
 
 var app = builder.Build();
