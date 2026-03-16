@@ -28,4 +28,6 @@ http://localhost:5341
 ### Zipkin
 http://localhost:9411
 ### Grafana
-http://localhost:3000
+http://localhost:3000  
+**Username:** admin  
+**Password:** admin
