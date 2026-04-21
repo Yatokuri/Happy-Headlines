@@ -1,8 +1,10 @@
+using NewsletterService.BackgroundServices;
 using NewsletterService.Clients;
 using NewsletterService.Services;
 using Shared.DependencyInjection;
 using Serilog;
 using Shared.Resilience;
+using StackExchange.Redis;
 
 Log.Logger = new LoggerConfiguration()
     .Enrich.FromLogContext()
@@ -18,6 +20,14 @@ builder.Services.AddServiceDefaults(
     builder.Configuration,
     builder.Environment,
     "NewsletterService");
+
+var redisConnectionString =
+    builder.Configuration.GetConnectionString("Redis")
+    ?? "redis:6379,abortConnect=false";
+
+builder.Services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisConnectionString));
+
+builder.Services.AddHostedService<SubscriberWelcomeConsumer>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

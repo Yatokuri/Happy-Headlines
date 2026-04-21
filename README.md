@@ -21,6 +21,8 @@ http://localhost:5004/swagger
 http://localhost:5005/swagger
 ### PublisherService
 http://localhost:5006/swagger
+### SubscriberService
+http://localhost:5007/swagger
 
 ## Seq, Zipkin, Grafana
 ### Seq

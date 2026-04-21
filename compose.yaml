@@ -186,6 +186,7 @@
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Redis: redis:6379,abortConnect=false
     ports:
       - "5005:8080"
     depends_on:
@@ -215,7 +216,29 @@
         condition: service_started
       seq:
         condition: service_started
-
+        
+  subscriberservice:
+    build:
+      context: .
+      dockerfile: ./src/SubscriberService/Dockerfile
+    container_name: subscriberservice
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__SubscriberDatabase: Host=subscriber-db;Port=5432;Database=subscriber_db;Username=postgres;Password=postgres
+      ConnectionStrings__Redis: redis:6379,abortConnect=false
+    ports:
+      - "5007:8080"
+    depends_on:
+      subscriber-db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      seq:
+        condition: service_started
+      otel-collector:
+        condition: service_started
+        
   seq:
     image: datalust/seq:latest
     container_name: seq
@@ -363,3 +386,11 @@
       POSTGRES_DB: draft_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+      
+  subscriber-db:
+    <<: *article-db
+    environment:
+      POSTGRES_DB: subscriber_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    

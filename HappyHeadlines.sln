@@ -16,6 +16,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NewsletterService", "src\Ne
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shared", "src\Shared\Shared.csproj", "{C42E874F-59DC-464C-96D1-BAA67ED958F9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SubscriberService", "src\SubscriberService\SubscriberService.csproj", "{78C3C9CA-DE6A-4F24-B195-51A2909C1FD0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -50,6 +52,10 @@ Global
 		{C42E874F-59DC-464C-96D1-BAA67ED958F9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C42E874F-59DC-464C-96D1-BAA67ED958F9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C42E874F-59DC-464C-96D1-BAA67ED958F9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{78C3C9CA-DE6A-4F24-B195-51A2909C1FD0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{78C3C9CA-DE6A-4F24-B195-51A2909C1FD0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{78C3C9CA-DE6A-4F24-B195-51A2909C1FD0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{78C3C9CA-DE6A-4F24-B195-51A2909C1FD0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 	EndGlobalSection
