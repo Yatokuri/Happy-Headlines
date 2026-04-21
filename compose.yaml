@@ -227,6 +227,8 @@
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__SubscriberDatabase: Host=subscriber-db;Port=5432;Database=subscriber_db;Username=postgres;Password=postgres
       ConnectionStrings__Redis: redis:6379,abortConnect=false
+      FeatureHub__Host: http://featurehub:8085
+      FeatureHub__ApiKey: ${FEATUREHUB_API_KEY}
     ports:
       - "5007:8080"
     depends_on:
@@ -238,6 +240,17 @@
         condition: service_started
       otel-collector:
         condition: service_started
+      featurehub:
+        condition: service_started
+  
+  featurehub:
+    image: featurehub/party-server:latest
+    container_name: featurehub
+    user: "999:999"
+    ports:
+      - "8085:8085"
+    volumes:
+      - ./featurehub-data:/db
         
   seq:
     image: datalust/seq:latest

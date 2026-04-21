@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Shared.DependencyInjection;
+using Shared.FeatureFlags;
 using StackExchange.Redis;
 using SubscriberService.Data;
-using SubscriberService.FeatureFlags;
 using SubscriberService.Queues;
 using SubscriberService.Services;
 
@@ -38,8 +38,9 @@ builder.Services.AddDbContext<SubscriberDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("SubscriberDatabase")));
 
 builder.Services.AddScoped<ISubscriberService, SubscriberService.Services.SubscriberService>();
-builder.Services.AddSingleton<IFeatureToggleService, ConfigFeatureToggleService>();
 builder.Services.AddScoped<ISubscriberQueuePublisher, RedisSubscriberQueuePublisher>();
+
+builder.Services.AddHappyHeadlinesFeatureFlags(builder.Configuration);
 
 var app = builder.Build();
 

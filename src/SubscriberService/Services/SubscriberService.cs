@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System.Diagnostics;
+using Microsoft.EntityFrameworkCore;
 using Shared.Contracts;
 using SubscriberService.Contracts;
 using SubscriberService.Data;
@@ -13,16 +14,24 @@ public class SubscriberService(
     ILogger<SubscriberService> logger)
     : ISubscriberService
 {
+    private static readonly ActivitySource ActivitySource = new("SubscriberService");
+    
     public async Task<SubscriberResponse> SubscribeAsync(SubscribeRequest request, CancellationToken cancellationToken)
     {
+        using var activity = ActivitySource.StartActivity("Subscribe user");
+        activity?.SetTag("subscriber.email", request.Email);
+        
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
 
         var exists = await dbContext.Subscribers
             .AnyAsync(x => x.Email == normalizedEmail, cancellationToken);
 
         if (exists)
+        {
+            activity?.SetTag("subscriber.exists", true);
             throw new InvalidOperationException("Subscriber already exists.");
-
+        }
+        
         var entity = new Subscriber
         {
             Id = Guid.NewGuid(),
@@ -33,11 +42,16 @@ public class SubscriberService(
         dbContext.Subscribers.Add(entity);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        await queuePublisher.PublishSubscriberCreatedAsync(new SubscriberCreatedMessage
+        using (var queueActivity = ActivitySource.StartActivity("Queue subscriber created event"))
         {
-            Email = entity.Email,
-            CreatedAtUtc = entity.CreatedAtUtc
-        });
+            await queuePublisher.PublishSubscriberCreatedAsync(new SubscriberCreatedMessage
+            {
+                Email = entity.Email,
+                CreatedAtUtc = entity.CreatedAtUtc
+            });
+
+            queueActivity?.SetTag("subscriber.email", entity.Email);
+        }
 
         logger.LogInformation("Subscriber created and queued. Email: {Email}", entity.Email);
 
@@ -51,14 +65,20 @@ public class SubscriberService(
 
     public async Task<bool> UnsubscribeAsync(string email, CancellationToken cancellationToken)
     {
+        using var activity = ActivitySource.StartActivity("Unsubscribe user");
+        activity?.SetTag("subscriber.email", email);
+        
         var normalizedEmail = email.Trim().ToLowerInvariant();
 
         var entity = await dbContext.Subscribers
             .FirstOrDefaultAsync(x => x.Email == normalizedEmail, cancellationToken);
 
         if (entity is null)
+        {
+            activity?.SetTag("subscriber.found", false);
             return false;
-
+        }
+        
         dbContext.Subscribers.Remove(entity);
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -67,7 +87,9 @@ public class SubscriberService(
 
     public async Task<IReadOnlyCollection<SubscriberResponse>> GetAllAsync(CancellationToken cancellationToken)
     {
-        return await dbContext.Subscribers
+        using var activity = ActivitySource.StartActivity("Get all subscribers");
+        
+        var subscribers = await dbContext.Subscribers
             .OrderBy(x => x.Email)
             .Select(x => new SubscriberResponse
             {
@@ -76,5 +98,9 @@ public class SubscriberService(
                 CreatedAtUtc = x.CreatedAtUtc
             })
             .ToListAsync(cancellationToken);
+
+        activity?.SetTag("subscribers.count", subscribers.Count);
+
+        return subscribers;
     }
 }
