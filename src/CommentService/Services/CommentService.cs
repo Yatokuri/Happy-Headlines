@@ -4,6 +4,7 @@ using CommentService.Clients;
 using CommentService.Contracts;
 using CommentService.Data;
 using CommentService.Models;
+using CommentService.ProfanityFallback;
 using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
 
@@ -12,6 +13,7 @@ namespace CommentService.Services;
 public class CommentService(
     CommentDbContext dbContext,
     IProfanityClient profanityClient,
+    ILocalProfanityValidator localProfanityValidator,
     ILogger<CommentService> logger,
     IConnectionMultiplexer redis)
     : ICommentService
@@ -178,8 +180,16 @@ public class CommentService(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to call ProfanityService while creating comment.");
-            throw new InvalidOperationException("Profanity validation is currently unavailable. Please try again later.");
+            logger.LogWarning(ex, "ProfanityService unavailable - using local profanity fallback.");
+
+            using var fallbackActivity = ActivitySource.StartActivity("Local profanity fallback");
+
+            var fallbackResult = localProfanityValidator.Check(content);
+
+            fallbackActivity?.SetTag("profanity.source", "local");
+            fallbackActivity?.SetTag("profanity.contains", fallbackResult.ContainsProfanity);
+
+            return fallbackResult;
         }
     }
 

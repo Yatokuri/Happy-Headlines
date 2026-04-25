@@ -1,5 +1,6 @@
 using CommentService.Clients;
 using CommentService.Data;
+using CommentService.ProfanityFallback;
 using CommentService.Services;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -30,6 +31,7 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
 {
     return ConnectionMultiplexer.Connect(redisConnectionString);
 });
+builder.Services.AddSingleton<ILocalProfanityValidator, LocalProfanityValidator>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
